@@ -7,6 +7,8 @@
 
 package edu.nju.cs.mapreduceblast;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +19,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import edu.nju.cs.mapreduceblast.automaton.Scanner;
@@ -37,7 +40,7 @@ import edu.nju.cs.mapreduceblast.automaton.TwoHit;
  * extending 'two-hit' to ungapped (then gapped) alignment
  */
 public class BlastnMapper extends Mapper<Text, BytesWritable, 
-		IntWritable, Text>{ // Alignment> {
+		Text, BytesWritable>{ // Alignment> {
 	
 	enum GappedExtend { DP_TIMES}
 	
@@ -74,12 +77,15 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 	private boolean isLastRecordOfSeq=false;
 	
 	//fields for the alignment
-	DPExtender dpExtender;
+	private DPExtender dpExtender;
 	
 	//
-	HashSet<String> twoHitsHashSet = new HashSet<String>();
-	ArrayList<GapFreeExtension> filteredExt = 
+	private HashSet<String> twoHitsHashSet = new HashSet<String>();
+	private ArrayList<GapFreeExtension> filteredExt = 
 			new ArrayList<GapFreeExtension>();
+	
+	private Text outKey = new Text();
+	private BytesWritable outValue = new BytesWritable();
 	/**
 	 * load the scanner and query bytes file 
 	 */
@@ -235,34 +241,53 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 		
 		Collections.sort(filteredExt);
 		
-		//
+		// transmit seq bytes data to reducer, and do DP-alignment 
+		// at reducer side
 		for(int i = 0; i<10 && i<filteredExt.size(); i++){
-			//DP gapped extending
-			dpExtender.setParameters(
-					queryBytes, 0, queryBytes.length,
-					seqbytes, 0, 0+seqSplitLen+overlapLen,
-					filteredExt.get(i).twoHit.getSecondIndexInQuery(),
-					filteredExt.get(i).twoHit
-						.getSecondIndexInDB_Sequence(),
-					gappedXDrop, match, mismatch, gap);
-			try {
-				if(dpExtender.extend(gappedScoreThreshold)){
-					outValueAlign = dpExtender.getAlignment();
-					outValueAlign.setSubjectSeqID(key.toString());
-					outValueAlign.setSubjectSeqStartOffset(
-							seqStartOffset+
-							outValueAlign.getSubjectSeqStartOffset());
-					outKeyAlignScore.set(outValueAlign.getScore());
-					//context.write(outKeyAlignScore, outValueAlign);
-					Text align=new Text();
-					byte[] bytes1 = outValueAlign.getSubjectSeq();
-					align.set(Arrays.toString(bytes1));
-					context.write(outKeyAlignScore, align);
-					context.getCounter(GappedExtend.DP_TIMES).increment(1);
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			// emit key=(SeqID,startOffset,XBaseIndex,YBaseIndex)
+			// value=(seqbytes)
+			int XBaseIndex = 
+					filteredExt.get(i).twoHit.getSecondIndexInQuery();
+			int YBaseIndex = filteredExt.get(i)
+					.twoHit.getSecondIndexInDB_Sequence();
+			outKey.set(key+","+seqStartOffset+","+XBaseIndex
+					+","+YBaseIndex);
+			outValue.set(seqbytes, 0, seqSplitLen+overlapLen);
+			
+			context.write(outKey, outValue);
+			
+			context.getCounter(
+					GappedExtend.DP_TIMES).increment(1);
+			
+//			// TODO: move gapped extending to reduce side
+//			//DP gapped extending
+//			dpExtender.setParameters(
+//					queryBytes, 0, queryBytes.length,
+//					seqbytes, 0, 0+seqSplitLen+overlapLen,
+//					filteredExt.get(i).twoHit.getSecondIndexInQuery(),
+//					filteredExt.get(i).twoHit
+//						.getSecondIndexInDB_Sequence(),
+//					gappedXDrop, match, mismatch, gap);
+//			try {
+//				if(dpExtender.extend(gappedScoreThreshold)){
+					//outValueAlign = dpExtender.getAlignment();
+//					outValueAlign.setSubjectSeqID(key.toString());
+//					outValueAlign.setSubjectSeqStartOffset(
+//							seqStartOffset+
+//							outValueAlign.getSubjectSeqStartOffset());
+//					outKeyAlignScore.set(outValueAlign.getScore());
+//					//context.write(outKeyAlignScore, outValueAlign);
+//					Text align=new Text();
+//					byte[] bytes1 = outValueAlign.getSubjectSeq();
+//					align.set(Arrays.toString(bytes1));
+//					context.write(key, align);
+//					//context.write(outKeyAlignScore, align);
+//					context.getCounter(
+//							GappedExtend.DP_TIMES).increment(1);
+//				}
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
 		
 		}//~DP extending
 	}//~map()
@@ -349,23 +374,36 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 				twoHit, backwardIndex, forwardIndex);
 	}
 	
-}
 
-class GapFreeExtension implements Comparable<GapFreeExtension>{
-	public int score;
-	public TwoHit twoHit;
-	public int leftEnd;
-	public int rightEnd;
-	public GapFreeExtension(int score, TwoHit hit, 
-			int leftEnd, int rightEnd ){
-		this.score = score;
-		this.twoHit = hit;
-		this.leftEnd = leftEnd;
-		this.rightEnd = rightEnd;
+
+	public static class GapFreeExtension implements 
+			Comparable<GapFreeExtension>, Writable{
+		public int score;
+		public TwoHit twoHit;
+		public int leftEnd;
+		public int rightEnd;
+		public GapFreeExtension(int score, TwoHit hit, 
+				int leftEnd, int rightEnd ){
+			this.score = score;
+			this.twoHit = hit;
+			this.leftEnd = leftEnd;
+			this.rightEnd = rightEnd;
+		}
+		@Override
+		public int compareTo(GapFreeExtension other) {
+			
+			return -(this.score - other.score);
+		}
+		@Override
+		public void readFields(DataInput arg0) throws IOException {
+			// TODO Auto-generated method stub
+			
+		}
+		@Override
+		public void write(DataOutput arg0) throws IOException {
+			// TODO Auto-generated method stub
+			
+		}
 	}
-	@Override
-	public int compareTo(GapFreeExtension other) {
-		
-		return -(this.score - other.score);
-	}
+
 }

@@ -15,9 +15,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.lib.input.*;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import edu.nju.cs.mapreduceblast.automaton.AutomataMachine;
@@ -39,7 +41,7 @@ public class BlastnDriver {
 		public String description;
 	}
 	public static void printUsage(){
-		System.out.println("<-query <local query_file_name>> <-db <database file>> <-out <out path>>" +
+		System.out.println("<-query <local query_file_name>> <-db <database file>> <-r reduceNum> <-out <out path>>" +
 		" [-UT <ungapped threshold (int)>] [-w <word length (int)>] [- d <distance (int)>]");
 	}
 	public static void main(String[] args) throws Exception {
@@ -51,6 +53,7 @@ public class BlastnDriver {
 		arguments.put("-query", new Argument("-query", null, true, false, " query file path"));
 		arguments.put("-db", new Argument("-db", null, true, false, "sequence database path"));
 		arguments.put("-out", new Argument("-out", null, true, false, "out put file path"));
+		arguments.put("-r", new Argument("-r", null, false, false, "reduce num"));
 		arguments.put("-w", new Argument("-w", null, false, false, "word length"));
 		arguments.put("-d", new Argument("-d", null, false, false, "two hits distance A"));
 		arguments.put("-UT", new Argument("-UT", null, false, false, "ungapped extend threshold score"));
@@ -125,6 +128,11 @@ public class BlastnDriver {
 			conf.setInt("blastn.argument.wordLen", wordLength);
 		}
 		
+		int reduceNum = 1;
+		arg = arguments.get("-r");
+		if(arg.isSet){
+			reduceNum = Integer.parseInt(arg.value);
+		}
 		////////////////////////////////////////////////////////////////////////////////
 		System.out.println(new Date());
 		//construct the scanner
@@ -162,10 +170,10 @@ public class BlastnDriver {
 		job.setJarByClass(BlastnDriver.class);
 		job.setJobName("blastn");
 		job.setMapperClass(BlastnMapper.class);
-		job.setNumReduceTasks(0);
+		job.setNumReduceTasks(reduceNum);
 		
-		job.setOutputKeyClass(IntWritable.class);
-		job.setOutputValueClass(Alignment.class);
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(BytesWritable.class);
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
 //		job.setOutputFormatClass(SequenceFileOutputFormat.class);
