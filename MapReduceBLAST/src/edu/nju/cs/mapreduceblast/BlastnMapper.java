@@ -16,7 +16,6 @@ import java.util.HashSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
@@ -24,10 +23,7 @@ import edu.nju.cs.mapreduceblast.automaton.Scanner;
 import edu.nju.cs.mapreduceblast.automaton.TwoHit;
 
 /**
- * 
  * last modified 2011-7-1
- * 
- * 
  * 
  * @author Yang Xiao-liang
  * created at June 2011
@@ -42,6 +38,9 @@ import edu.nju.cs.mapreduceblast.automaton.TwoHit;
  */
 public class BlastnMapper extends Mapper<Text, BytesWritable, 
 		IntWritable, Text>{ // Alignment> {
+	
+	enum GappedExtend { DP_TIMES}
+	
 	private boolean DEBUG=false;
 	// key-value to write out
 	private IntWritable outKeyAlignScore = new IntWritable();
@@ -236,9 +235,9 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 		
 		Collections.sort(filteredExt);
 		
-		//a
+		//
 		for(int i = 0; i<10 && i<filteredExt.size(); i++){
-			//gapped extending
+			//DP gapped extending
 			dpExtender.setParameters(
 					queryBytes, 0, queryBytes.length,
 					seqbytes, 0, 0+seqSplitLen+overlapLen,
@@ -259,13 +258,14 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 					byte[] bytes1 = outValueAlign.getSubjectSeq();
 					align.set(Arrays.toString(bytes1));
 					context.write(outKeyAlignScore, align);
+					context.getCounter(GappedExtend.DP_TIMES).increment(1);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		
-		}////
-	}
+		}//~DP extending
+	}//~map()
 		
 	
 	/**
