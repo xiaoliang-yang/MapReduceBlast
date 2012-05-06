@@ -42,7 +42,7 @@ import edu.nju.cs.mapreduceblast.automaton.TwoHit;
 public class BlastnMapper extends Mapper<Text, BytesWritable, 
 		Text, BytesWritable>{ // Alignment> {
 	
-	enum GappedExtend { DP_TIMES}
+	enum GappedExtend { DP_TIMES, MapSec, MapSetupToCleanupSec}
 	
 	private boolean DEBUG=false;
 	// key-value to write out
@@ -89,8 +89,11 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 	/**
 	 * load the scanner and query bytes file 
 	 */
+	long setupStartTime;
+	long closeEndTime;
 	@Override
 	public void setup(Context context) throws IOException {
+	  this.setupStartTime = System.currentTimeMillis();
 		Configuration conf = context.getConfiguration();
 		this.DEBUG = conf.getBoolean("DEBUG", false);
 		
@@ -130,6 +133,7 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 		dpExtender = new DPExtender();
 	}
 	
+	private long mapTimeCount = 0;
 
 	/**
 	 * scanning 'two-hit' in database sequences by using an AC automu
@@ -138,6 +142,8 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 	@Override
 	public void map(Text key, BytesWritable val, Context context) 
 			throws IOException, InterruptedException{
+		long mStart = System.currentTimeMillis();
+		
 		// extract bases in val, into a byte array,///////////// 
 		// in which each byte contains one bp(encoded in 4 bits) on
 		// the right half byte
@@ -290,8 +296,20 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 //			}
 		
 		}//~DP extending
+		
+		this.mapTimeCount += (System.currentTimeMillis() - mStart);
+		
+		
 	}//~map()
 		
+	@Override
+	public void cleanup(Context context){
+	  this.closeEndTime = System.currentTimeMillis();
+	  context.getCounter(GappedExtend.MapSetupToCleanupSec).
+	      increment((this.closeEndTime-this.setupStartTime)/1000);
+		context.getCounter(
+				GappedExtend.MapSec).increment(this.mapTimeCount/1000);
+	}
 	
 	/**
 	 * 

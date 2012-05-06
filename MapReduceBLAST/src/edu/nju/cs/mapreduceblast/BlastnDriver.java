@@ -180,7 +180,7 @@ public class BlastnDriver {
 		
 		FileInputFormat.addInputPath(job, new Path(dbFile));
 		FileOutputFormat.setOutputPath(job, new Path(outFile));
-		
+		System.out.println(new Date().toString()+"job prepared!");
 		job.waitForCompletion(true);
 
 		//clear
