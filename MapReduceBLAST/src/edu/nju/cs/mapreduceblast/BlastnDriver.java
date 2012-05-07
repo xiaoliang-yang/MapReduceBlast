@@ -186,6 +186,10 @@ public class BlastnDriver {
 		//clear
 		fs.deleteOnExit(scannerObjPath);
 		fs.deleteOnExit(queryBytesFilePath);
+		
+    System.out.println("jobID query db out time(sec)");
+    System.out.println(job.getJobID()+"\t"+queryFile+"\t"
+        +dbFile+"\t"+outFile+"\t"+"??");
 	}
 
 }
