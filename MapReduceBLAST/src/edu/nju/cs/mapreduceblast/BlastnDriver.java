@@ -142,7 +142,7 @@ public class BlastnDriver {
 		System.out.println("Scanner constructed.");
 		
 		//and write scanner object  to file
-		String scannerObjFileName = "_"+(new File(queryFile)).getName()+"-Scanner.obj";
+		String scannerObjFileName = "_"+System.currentTimeMillis()+(new File(queryFile)).getName()+"-Scanner.obj";
 		Path scannerObjPath = new Path(scannerObjFileName); 
 		scanner.writeToHDFS_File(fs, scannerObjPath);
 		System.out.println("Scanner object wrriten to file: "+scannerObjFileName);
@@ -154,7 +154,7 @@ public class BlastnDriver {
 		
 		//distribute query bytes to slave nodes
 		byte[] queryBytes = BlastUtils.DNA_String2bytes(query);
-		String queryBytesFile = "_query.byte";
+		String queryBytesFile = "_"+System.currentTimeMillis()+"query.byte";
 		System.out.print("writing query bytes to HDFS...");
 		Path queryBytesFilePath = new Path(queryBytesFile);
 		BlastUtils.writeBytesToHDFS(fs, conf, queryBytesFilePath, queryBytes);
