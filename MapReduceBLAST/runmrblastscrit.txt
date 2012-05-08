@@ -1,0 +1,1 @@
+~/hadoopbin/hadoop jar MRBLAST-v2-H205-20120424.jar blastn -r 60 -query querydata/10kb.txt -db blast/data/nt.seq -out blastout-10kb-27
