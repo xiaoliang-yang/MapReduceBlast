@@ -259,7 +259,7 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 			outKey.set(key+","+seqStartOffset+","+XBaseIndex
 					+","+YBaseIndex);
 			outValue.set(seqbytes, 0, seqSplitLen+overlapLen);
-			
+//			outValue.set(new BytesWritable());
 			context.write(outKey, outValue);
 			
 			context.getCounter(
