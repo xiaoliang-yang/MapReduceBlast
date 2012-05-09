@@ -63,7 +63,8 @@ public class BlastnReducer extends Reducer<Text, BytesWritable,
 	public void reduce(Text key, Iterable<BytesWritable> values, 
 			Context context)throws IOException, InterruptedException{
 		
-		byte[] seqBytes = values.iterator().next().getBytes();
+		BytesWritable oneSeq = values.iterator().next();
+//	  byte[] seqBytes = values.iterator().next().getBytes();
 		String[] params = key.toString().split(",");
 		int seqID = Integer.valueOf(params[0]);
 		int seqStartOffset = Integer.valueOf(params[1]);
@@ -77,7 +78,8 @@ public class BlastnReducer extends Reducer<Text, BytesWritable,
 			
 			dpExtender.setParameters(
 					queryBytes, 0, queryBytes.length,
-					seqBytes, 0, seqBytes.length, 
+					//seqBytes, 0, seqBytes.length, //bug
+					oneSeq.getBytes(), 0 , oneSeq.getLength(),
 					XBaseIndex, YBaseIndex, gappedXDrop, 
 					match, mismatch, gap);
 			
