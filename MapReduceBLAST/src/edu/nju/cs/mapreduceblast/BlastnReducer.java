@@ -13,7 +13,7 @@ import edu.nju.cs.mapreduceblast.automaton.Scanner;
 
 public class BlastnReducer extends Reducer<Text, BytesWritable,
 		Text,BytesWritable>{
-	
+  enum GappedExtend { R_DP_TIMES, OUT_Seg}
 	//blastn arguments
 	private int match;
 	private int mismatch;
@@ -82,9 +82,12 @@ public class BlastnReducer extends Reducer<Text, BytesWritable,
 					oneSeq.getBytes(), 0 , oneSeq.getLength(),
 					XBaseIndex, YBaseIndex, gappedXDrop, 
 					match, mismatch, gap);
-			
+			context.getCounter(
+          BlastnReducer.GappedExtend.R_DP_TIMES).increment(1);
 			if(dpExtender.extend(gappedScoreThreshold)){
-				outValueAlign = dpExtender.getAlignment();
+			  context.getCounter(
+	          BlastnReducer.GappedExtend.OUT_Seg).increment(1);
+			  outValueAlign = dpExtender.getAlignment();
 				
 				//TODO: output format
 				BytesWritable bytesSegment = new BytesWritable();
@@ -94,8 +97,7 @@ public class BlastnReducer extends Reducer<Text, BytesWritable,
 				context.write(key, bytesSegment);
 				//context.write(outKeyAlignScore, outValueAlign);
 				//context.write(outKeyAlignScore, align);
-				context.getCounter(
-						BlastnMapper.GappedExtend.DP_TIMES).increment(1);
+				
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

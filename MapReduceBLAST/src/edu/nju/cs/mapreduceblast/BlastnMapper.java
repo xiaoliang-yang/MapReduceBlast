@@ -295,7 +295,7 @@ public class BlastnMapper extends Mapper<Text, BytesWritable,
 //				e.printStackTrace();
 //			}
 		
-		}//~DP extending
+		}// foreach ~DP extending
 		
 		this.mapTimeCount += (System.currentTimeMillis() - mStart);
 		

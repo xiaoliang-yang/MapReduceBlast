@@ -170,6 +170,7 @@ public class BlastnDriver {
 		job.setJarByClass(BlastnDriver.class);
 		job.setJobName("blastn");
 		job.setMapperClass(BlastnMapper.class);
+		job.setReducerClass(BlastnReducer.class);
 		job.setNumReduceTasks(reduceNum);
 		
 		job.setOutputKeyClass(Text.class);
